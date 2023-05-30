@@ -4,6 +4,8 @@ import dash
 from dash import dcc, html
 from dash.dependencies import Input, Output
 import plotly.graph_objects as go
+from max30102 import MAX30102
+import hrcalc
 
 bus = SMBus(1)  # 1 indicates /dev/i2c-1
 
