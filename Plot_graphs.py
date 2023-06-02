@@ -95,7 +95,7 @@ def PPG_callback(bpm, spo2, time):
     last_time = time
 
 print('sensor starting...')
-hrm = HeartRateMonitor(print_raw=args.raw, print_result=True, callback=PPG_callback)
+hrm = HeartRateMonitor(print_raw=args.raw, print_result=False, callback=PPG_callback)
 hrm.start_sensor()
 
 # Set up the animation
