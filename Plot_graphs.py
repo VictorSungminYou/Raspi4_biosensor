@@ -1,64 +1,52 @@
 import time
-from smbus import SMBus
-import dash
-from dash import dcc, html
-from dash.dependencies import Input, Output
-import plotly.graph_objects as go
-from max30102 import MAX30102
-import hrcalc
+import smbus
+import matplotlib.pyplot as plt
+import numpy as np
 
-bus = SMBus(1)  # 1 indicates /dev/i2c-1
+# Constants
+DEVICE     = 0x48 # Device address (A0-A2)
+ADC_CHNLS  = [0x40, 0x41, 0x42, 0x43] # ADC channels
+N_SAMPLES  = 100
 
-# PCF8591 and MAX30102 addresses
-PCF8591_ADDR = 0x48
-MAX30102_ADDR = 0x57  # This is a guess; check the actual address
+bus = smbus.SMBus(1)  # Rev 2 Pi uses 1
 
-# Initialize global data store
-data = {
-    'channel_{}'.format(i): []
-    for i in range(6)
-}
+# Initialize plot
+plt.ion() 
+fig, ax = plt.subplots(4, 1, sharex=True)
 
-app = dash.Dash(__name__)
+# Initialize data arrays
+data = np.zeros((4, N_SAMPLES))
 
-app.layout = html.Div([
-    dcc.Graph(id='live-graph', animate=True),
-    dcc.Interval(
-        id='graph-update',
-        interval=1*1000,
-    ),
-])
+def read_adc(channel):
+    """Reads the ADC channel."""
+    if channel in ADC_CHNLS:
+        bus.write_byte(DEVICE, channel)
+        bus.read_byte(DEVICE)  # dummy read to start conversion
+        return bus.read_byte(DEVICE)
+    else:
+        raise ValueError('Invalid ADC channel.')
 
-@app.callback(
-    Output('live-graph', 'figure'),
-    [Input('graph-update', 'n_intervals')]
-)
-def update_graph_scatter(n):
-    # Read from the PCF8591
-    for i in range(4):
-        bus.write_byte(PCF8591_ADDR, i)
-        value = bus.read_byte(PCF8591_ADDR)
-        data['channel_{}'.format(i)].append(value)
+def main():
+    try:
+        while True:
+            for i, channel in enumerate(ADC_CHNLS):
+                value = read_adc(channel)
+                print(f"Channel {channel - 0x40}: {value}")
+                
+                # Shift old data to the left
+                data[i, :-1] = data[i, 1:]
+                # Add new data to the right
+                data[i, -1] = value
+                
+                # Update plot
+                ax[i].clear()
+                ax[i].plot(data[i])
+                ax[i].set_title(f'Channel {channel - 0x40}')
+            
+            plt.pause(0.1)  # short pause for plots to update
 
-    # Read from the MAX30102
-    for i in range(2):
-        # You'll need to replace this with the actual code to read from the MAX30102
-        value = bus.read_byte_data(MAX30102_ADDR, i)
-        data['channel_{}'.format(i+4)].append(value)
+    except KeyboardInterrupt:
+        plt.close()
 
-    # Create new figure
-    fig = go.Figure()
-
-    # Add traces
-    for i in range(6):
-        fig.add_trace(go.Scatter(
-            x=list(range(len(data['channel_{}'.format(i)]))),
-            y=data['channel_{}'.format(i)],
-            name='Channel {}'.format(i),
-            mode='lines+markers'
-        ))
-
-    return fig
-
-if __name__ == '__main__':
-    app.run_server(debug=True)
+if __name__ == "__main__":
+    main()
