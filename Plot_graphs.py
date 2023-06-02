@@ -1,9 +1,13 @@
+import tkinter
+import matplotlib
 from heartrate_monitor import HeartRateMonitor
 import time
 import argparse
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import smbus
+
+matplotlib.use('TkAgg')
 
 parser = argparse.ArgumentParser(description="Read and print data from MAX30102")
 parser.add_argument("-r", "--raw", action="store_true", default=False,
@@ -43,13 +47,13 @@ last_time = 0
 def update_plot(frame):
     x_data.append(last_time)
     max_data.append(last_bpm)
-    
+
     # Read the four analog signals from the PCF8591 module
     ain0 = readADC(AIN0)
     ain1 = readADC(AIN1)
     ain2 = readADC(AIN2)
     ain3 = readADC(AIN3)
-    
+
     # Plot the signals
     ain0_data.append(ain0)
     ain1_data.append(ain1)
@@ -104,4 +108,4 @@ except KeyboardInterrupt:
     print('keyboard interrupt detected, exiting...')
 
 hrm.stop_sensor()
-print('sensor stoped!')   
+print('sensor stoped!')
